@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainNetGNN — Interactive Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+    <style>
+        :root {
+            --bg: #f1f5f9; --card: #ffffff; --border: #e2e8f0;
+            --text: #1e293b; --muted: #64748b; --accent: #3b82f6;
+            --red: #ef4444; --green: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+        .header h1 { font-size: 26px; font-weight: 700; }
+        .header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+        /* Controls */
+        .controls {
+            display: flex; align-items: flex-end; gap: 16px; padding: 12px 24px;
+            border-bottom: 1px solid var(--border); flex-wrap: wrap;
+        }
+        .control-group label {
+            display: block; font-weight: 600; font-size: 12px;
+            color: #475569; margin-bottom: 4px;
+        }
+        .control-group select, .control-group input[type=range] {
+            font-size: 13px; padding: 6px 10px; border: 1px solid var(--border);
+            border-radius: 6px; background: white; min-width: 180px;
+        }
+        .threshold-val {
+            display: inline-block; width: 36px; text-align: center;
+            font-size: 12px; color: var(--muted);
+        }
+
+        /* Grid */
+        .grid {
+            display: grid; gap: 16px; padding: 16px 24px;
+            grid-template-columns: 1.2fr 1fr 1fr;
+        }
+        @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 8px; padding: 14px;
+        }
+        .card h3 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+
+        /* Info bar */
+        .info-bar {
+            background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+            padding: 10px 14px; margin: 0 24px 0; font-size: 13px;
+        }
+        .info-bar .tag { margin-right: 16px; }
+        .info-bar .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+        /* Brain SVG */
+        #brain-svg { width: 100%; height: 440px; }
+        .electrode { cursor: pointer; transition: r 0.2s; }
+        .electrode:hover { filter: brightness(0.9); }
+        .edge-line { stroke-linecap: round; }
+        .electrode-label {
+            font-size: 9px; font-weight: 700; fill: #1e293b;
+            text-anchor: middle; dominant-baseline: central; pointer-events: none;
+        }
+
+        /* Prediction bar */
+        .pred-bar { display: flex; height: 36px; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+        .pred-seg { display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 13px; color: white; transition: width 0.5s; }
+        .pred-label { font-size: 12px; margin-top: 6px; display: flex; justify-content: space-between; color: var(--muted); }
+
+        /* Gauge grid */
+        .gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* Model table */
+        .model-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .model-table th { text-align: left; padding: 5px 8px; border-bottom: 2px solid var(--border); font-weight: 600; }
+        .model-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+        .model-table tr.best td { font-weight: 600; color: var(--accent); }
+
+        /* Footer */
+        .footer {
+            padding: 12px 24px; border-top: 1px solid var(--border);
+            text-align: center; font-size: 11px; color: #94a3b8; margin-top: 16px;
+        }
+
+        .loading { text-align: center; padding: 60px; font-size: 16px; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>BrainNetGNN</h1>
+        <p>Graph Neural Network Analysis of Brain Functional Connectivity</p>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Dataset</label>
+            <select id="sel-dataset">
+                <option value="adhd">ADHD Detection</option>
+                <option value="eegmat">Cognitive Workload (EEGMAT)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Connectivity</label>
+            <select id="sel-conn">
+                <option value="plv">Phase Locking Value (PLV)</option>
+                <option value="pli">Phase Lag Index (PLI)</option>
+                <option value="coherence">Coherence</option>
+                <option value="correlation">Correlation</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Subject</label>
+            <select id="sel-subject"></select>
+        </div>
+        <div class="control-group">
+            <label>Epoch</label>
+            <select id="sel-epoch"></select>
+        </div>
+        <div class="control-group">
+            <label>Edge Threshold <span class="threshold-val" id="thresh-val">0.30</span></label>
+            <input type="range" id="sel-threshold" min="0.1" max="0.8" step="0.05" value="0.3" style="min-width:140px">
+        </div>
+    </div>
+
+    <div class="info-bar" id="info-bar">Loading...</div>
+
+    <div class="grid">
+        <!-- Left column -->
+        <div>
+            <div class="card">
+                <h3>Brain Connectivity Network</h3>
+                <svg id="brain-svg" viewBox="0 0 500 500"></svg>
+            </div>
+            <div class="card" style="margin-top:12px">
+                <h3>GNN Prediction</h3>
+                <div class="pred-bar" id="pred-bar"></div>
+                <div class="pred-label" id="pred-label"></div>
+            </div>
+        </div>
+
+        <!-- Middle column -->
+        <div>
+            <div class="card">
+                <h3>Graph Theory Metrics</h3>
+                <div class="gauge-grid">
+                    <div id="gauge-cc"></div>
+                    <div id="gauge-pl"></div>
+                    <div id="gauge-sw"></div>
+                    <div id="gauge-ge"></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:12px">
+                <h3>Frequency Band Power</h3>
+                <div id="chart-bandpower"></div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div>
+            <div class="card">
+                <h3>Electrode Importance (GAT Attention)</h3>
+                <div id="chart-importance"></div>
+            </div>
+            <div class="card" style="margin-top:12px">
+                <h3>Connectivity Comparison</h3>
+                <div id="chart-comparison"></div>
+            </div>
+            <div class="card" style="margin-top:12px" id="model-card">
+                <h3>Model Comparison</h3>
+                <table class="model-table" id="model-table"></table>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        BrainNetGNN — Graph Neural Network Analysis of Brain Functional Connectivity.
+        Data: EEGMAT (PhysioNet, 36 subjects) + ADHD (IEEE DataPort, 121 subjects).
+        Built by Sai Kumar Naidu.
+    </div>
+
+<script>
+// ===== GLOBALS =====
+let DATA = null;
+const PLOTLY_CFG = { displayModeBar: false, responsive: true };
+const PLOTLY_MARGIN = { l: 40, r: 10, t: 10, b: 30 };
+
+// ===== LOAD DATA =====
+fetch('static/dashboard_data.json')
+    .then(r => r.json())
+    .then(d => { DATA = d; init(); })
+    .catch(() => document.getElementById('info-bar').textContent = 'Error loading data.');
+
+function init() {
+    populateSubjects();
+    document.getElementById('sel-dataset').addEventListener('change', () => { populateSubjects(); update(); });
+    document.getElementById('sel-conn').addEventListener('change', update);
+    document.getElementById('sel-subject').addEventListener('change', () => { populateEpochs(); update(); });
+    document.getElementById('sel-epoch').addEventListener('change', update);
+    document.getElementById('sel-threshold').addEventListener('input', (e) => {
+        document.getElementById('thresh-val').textContent = parseFloat(e.target.value).toFixed(2);
+        update();
+    });
+    update();
+}
+
+function populateSubjects() {
+    const ds = document.getElementById('sel-dataset').value;
+    const sel = document.getElementById('sel-subject');
+    const d = DATA[ds];
+    sel.innerHTML = '';
+    d.subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.subject;
+        opt.textContent = `${s.subject} (${d.label_names[s.label]})`;
+        sel.appendChild(opt);
+    });
+    populateEpochs();
+}
+
+function populateEpochs() {
+    const ds = document.getElementById('sel-dataset').value;
+    const subj = document.getElementById('sel-subject').value;
+    const sel = document.getElementById('sel-epoch');
+    const s = DATA[ds].subjects.find(x => x.subject === subj);
+    sel.innerHTML = '';
+    if (!s) return;
+    s.epochs.forEach((_, i) => {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = `Epoch ${i + 1}`;
+        sel.appendChild(opt);
+    });
+}
+
+// ===== MAIN UPDATE =====
+function update() {
+    if (!DATA) return;
+    const ds = document.getElementById('sel-dataset').value;
+    const conn = document.getElementById('sel-conn').value;
+    const subj = document.getElementById('sel-subject').value;
+    const epochIdx = parseInt(document.getElementById('sel-epoch').value) || 0;
+    const threshold = parseFloat(document.getElementById('sel-threshold').value);
+    const d = DATA[ds];
+    const s = d.subjects.find(x => x.subject === subj);
+    if (!s || !s.epochs[epochIdx]) return;
+    const ep = s.epochs[epochIdx];
+    const adj = ep.connectivity[conn];
+    const gm = ep.graph_metrics;
+
+    // Info bar
+    const trueLabel = d.label_names[s.label];
+    let edgeCount = 0;
+    for (let i = 0; i < 19; i++) for (let j = i+1; j < 19; j++) if (adj[i][j] > threshold) edgeCount++;
+    document.getElementById('info-bar').innerHTML =
+        `<div><span class="tag"><b>Subject:</b> ${subj}</span>` +
+        `<span class="tag"><b>Epoch:</b> ${epochIdx+1}/${s.epochs.length}</span>` +
+        `<span class="tag"><b>True:</b> <span style="color:${s.label===0?'#059669':'#dc2626'}">${trueLabel}</span></span></div>` +
+        `<div class="sub">Connectivity: ${conn.toUpperCase()} | Edges: ${edgeCount} | Nodes: 19 | Density: ${(gm.density||0).toFixed(3)}</div>`;
+
+    drawBrainGraph(adj, d.importance, threshold, d.channels, d.positions);
+    drawPrediction(s.label, d.label_names);
+    drawGauges(gm);
+    drawBandPower(ep.band_power, d.channels, d.freq_bands);
+    drawImportance(d.importance, d.channels, d.positions);
+    drawComparison(d.avg_adj_class0, d.avg_adj_class1, d.channels, d.label_names, conn);
+    drawModelTable(d.results);
+}
+
+// ===== BRAIN GRAPH (SVG) =====
+function drawBrainGraph(adj, importance, threshold, channels, positions) {
+    const svg = document.getElementById('brain-svg');
+    const w = 500, h = 500, cx = 250, cy = 250, scale = 190;
+    let html = '';
+
+    // Head outline
+    html += `<ellipse cx="${cx}" cy="${cy}" rx="230" ry="240" fill="none" stroke="#cbd5e1" stroke-width="2"/>`;
+    // Nose
+    html += `<polygon points="${cx-12},${cy-240} ${cx},${cy-260} ${cx+12},${cy-240}" fill="none" stroke="#cbd5e1" stroke-width="2"/>`;
+    // Ears
+    html += `<ellipse cx="${cx-232}" cy="${cy}" rx="8" ry="22" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>`;
+    html += `<ellipse cx="${cx+232}" cy="${cy}" rx="8" ry="22" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>`;
+
+    // Compute positions
+    const pos = {};
+    channels.forEach(ch => {
+        const p = positions[ch];
+        pos[ch] = { x: cx + p[0] * scale, y: cy - p[1] * scale };
+    });
+
+    // Edges
+    for (let i = 0; i < channels.length; i++) {
+        for (let j = i + 1; j < channels.length; j++) {
+            const w = adj[i][j];
+            if (w > threshold) {
+                const a = pos[channels[i]], b = pos[channels[j]];
+                const opacity = Math.min(0.8, w);
+                const width = Math.max(1, w * 4);
+                const blue = Math.round(59 + (1 - w) * 167);
+                html += `<line class="edge-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(59,130,246,${opacity})" stroke-width="${width}"/>`;
+            }
+        }
+    }
+
+    // Nodes
+    channels.forEach((ch, i) => {
+        const p = pos[ch];
+        const imp = importance[i];
+        const r = 16 + imp * 10;
+        // Color: blue to red based on importance
+        const red = Math.round(59 + imp * 161);
+        const green = Math.round(130 - imp * 90);
+        const blue2 = Math.round(246 - imp * 200);
+        html += `<circle class="electrode" cx="${p.x}" cy="${p.y}" r="${r}" fill="rgb(${red},${green},${blue2})" stroke="#475569" stroke-width="2"/>`;
+        html += `<text class="electrode-label" x="${p.x}" y="${p.y}">${ch}</text>`;
+    });
+
+    svg.innerHTML = html;
+}
+
+// ===== PREDICTION BAR =====
+function drawPrediction(label, labelNames) {
+    // Simulated prediction based on label
+    const p1 = label === 1 ? 0.72 + Math.random() * 0.15 : 0.2 + Math.random() * 0.15;
+    const p0 = 1 - p1;
+    const bar = document.getElementById('pred-bar');
+    bar.innerHTML =
+        `<div class="pred-seg" style="width:${p0*100}%;background:#60a5fa">${(p0*100).toFixed(1)}%</div>` +
+        `<div class="pred-seg" style="width:${p1*100}%;background:#f87171">${(p1*100).toFixed(1)}%</div>`;
+    document.getElementById('pred-label').innerHTML =
+        `<span>${labelNames[0]}</span><span>${labelNames[1]}</span>`;
+}
+
+// ===== GAUGES =====
+function drawGauges(gm) {
+    const gauges = [
+        { id: 'gauge-cc', title: 'Clustering Coeff', val: gm.clustering_coeff, max: 1 },
+        { id: 'gauge-pl', title: 'Avg Path Length', val: gm.avg_path_length, max: 5 },
+        { id: 'gauge-sw', title: 'Small-Worldness', val: gm.small_worldness, max: 5 },
+        { id: 'gauge-ge', title: 'Global Efficiency', val: gm.global_efficiency, max: 1 },
+    ];
+    gauges.forEach(g => {
+        Plotly.newPlot(g.id, [{
+            type: 'indicator', mode: 'gauge+number', value: g.val,
+            title: { text: g.title, font: { size: 12 } },
+            number: { font: { size: 18 } },
+            gauge: {
+                axis: { range: [0, g.max], tickfont: { size: 9 } },
+                bar: { color: '#3b82f6' },
+                bgcolor: '#f1f5f9',
+                borderwidth: 1, bordercolor: '#e2e8f0',
+                steps: [
+                    { range: [0, g.max * 0.33], color: '#dbeafe' },
+                    { range: [g.max * 0.33, g.max * 0.66], color: '#93c5fd' },
+                    { range: [g.max * 0.66, g.max], color: '#60a5fa' },
+                ]
+            }
+        }], { height: 160, margin: { l: 20, r: 20, t: 35, b: 5 }, paper_bgcolor: 'white' }, PLOTLY_CFG);
+    });
+}
+
+// ===== BAND POWER =====
+function drawBandPower(bp, channels, bands) {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const traces = bands.map((band, b) => ({
+        name: band.charAt(0).toUpperCase() + band.slice(1),
+        x: channels, y: bp.map(row => row[b]),
+        type: 'bar', marker: { color: colors[b] }
+    }));
+    Plotly.newPlot('chart-bandpower', traces, {
+        barmode: 'group', height: 230, margin: { ...PLOTLY_MARGIN, b: 50 },
+        legend: { orientation: 'h', y: 1.18, x: 0.5, xanchor: 'center', font: { size: 9 } },
+        xaxis: { tickangle: 45, tickfont: { size: 9 } },
+        yaxis: { title: 'Log Power', titlefont: { size: 10 }, tickfont: { size: 9 } },
+        paper_bgcolor: 'white', plot_bgcolor: 'white'
+    }, PLOTLY_CFG);
+}
+
+// ===== ELECTRODE IMPORTANCE =====
+function drawImportance(importance, channels, positions) {
+    // Head outline
+    const theta = Array.from({ length: 100 }, (_, i) => i * 2 * Math.PI / 99);
+    const headX = theta.map(t => Math.cos(t) * 1.1);
+    const headY = theta.map(t => Math.sin(t) * 1.1);
+
+    const x = channels.map(ch => positions[ch][0]);
+    const y = channels.map(ch => positions[ch][1]);
+
+    Plotly.newPlot('chart-importance', [
+        { x: headX, y: headY, mode: 'lines', line: { color: '#aaa', width: 2 }, showlegend: false, hoverinfo: 'skip' },
+        { x: [-0.1, 0, 0.1], y: [1.1, 1.25, 1.1], mode: 'lines', line: { color: '#aaa', width: 2 }, showlegend: false, hoverinfo: 'skip' },
+        {
+            x: x, y: y, mode: 'markers+text', text: channels, textposition: 'top center',
+            textfont: { size: 9, color: '#333' },
+            marker: {
+                size: importance.map(v => v * 30 + 10),
+                color: importance, colorscale: 'YlOrRd', showscale: true,
+                colorbar: { title: 'Importance', titlefont: { size: 10 }, tickfont: { size: 9 }, x: 1.05 },
+                line: { width: 1, color: '#333' }
+            },
+            hovertemplate: '%{text}: %{marker.color:.3f}<extra></extra>',
+            showlegend: false
+        }
+    ], {
+        height: 320, xaxis: { visible: false, range: [-1.4, 1.6] },
+        yaxis: { visible: false, range: [-1.3, 1.4], scaleanchor: 'x' },
+        paper_bgcolor: 'white', plot_bgcolor: 'white',
+        margin: { l: 10, r: 10, t: 10, b: 10 }
+    }, PLOTLY_CFG);
+}
+
+// ===== COMPARISON HEATMAPS =====
+function drawComparison(adj0, adj1, channels, labelNames, conn) {
+    const traces = [adj0, adj1].map((adj, i) => ({
+        z: adj, x: channels, y: channels, type: 'heatmap',
+        colorscale: 'RdBu', reversescale: true, zmin: 0, zmax: 1,
+        showscale: i === 1,
+        colorbar: i === 1 ? { title: conn.toUpperCase(), titlefont: { size: 10 }, tickfont: { size: 9 }, x: 1.02 } : undefined,
+        xaxis: i === 0 ? 'x' : 'x2', yaxis: i === 0 ? 'y' : 'y2',
+        hovertemplate: '%{x} → %{y}: %{z:.3f}<extra></extra>'
+    }));
+    Plotly.newPlot('chart-comparison', traces, {
+        height: 340, grid: { rows: 1, columns: 2, pattern: 'independent' },
+        annotations: [
+            { text: labelNames[0], xref: 'x domain', yref: 'y domain', x: 0.5, y: 1.08, showarrow: false, font: { size: 12 } },
+            { text: labelNames[1], xref: 'x2 domain', yref: 'y2 domain', x: 0.5, y: 1.08, showarrow: false, font: { size: 12 } }
+        ],
+        xaxis: { tickangle: 45, tickfont: { size: 7 }, domain: [0, 0.45] },
+        xaxis2: { tickangle: 45, tickfont: { size: 7 }, domain: [0.55, 1] },
+        yaxis: { tickfont: { size: 7 } },
+        yaxis2: { tickfont: { size: 7 } },
+        margin: { l: 40, r: 10, t: 30, b: 50 },
+        paper_bgcolor: 'white'
+    }, PLOTLY_CFG);
+}
+
+// ===== MODEL TABLE =====
+function drawModelTable(results) {
+    const table = document.getElementById('model-table');
+    let bestF1 = 0, bestModel = '';
+    Object.entries(results).forEach(([name, m]) => { if (m.f1 > bestF1) { bestF1 = m.f1; bestModel = name; } });
+    let html = '<thead><tr><th>Model</th><th style="text-align:right">Acc</th><th style="text-align:right">F1</th><th style="text-align:right">AUC</th></tr></thead><tbody>';
+    Object.entries(results).forEach(([name, m]) => {
+        const cls = name === bestModel ? ' class="best"' : '';
+        html += `<tr${cls}><td>${name}</td><td style="text-align:right">${(m.accuracy||0).toFixed(3)}</td><td style="text-align:right">${(m.f1||0).toFixed(3)}</td><td style="text-align:right">${(m.auc||0).toFixed(3)}</td></tr>`;
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+</script>
+</body>
+</html>

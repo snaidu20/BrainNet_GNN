@@ -6,6 +6,10 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![MNE](https://img.shields.io/badge/MNE--Python-1.12-green.svg)](https://mne.tools/)
 
+### [View Live Dashboard Demo](https://snaidu20.github.io/BrainNet_GNN/)
+
+[![Dashboard Demo](docs/dashboard_v2.png)](https://snaidu20.github.io/BrainNet_GNN/)
+
 BrainNetGNN applies Graph Neural Networks (GCN, GAT) to functional brain networks constructed from multi-channel EEG recordings for **cognitive workload classification** and **ADHD detection**. The project includes an interactive dashboard for real-time brain network visualization and GNN-based prediction.
 
 This work extends established graph-theoretic brain network analysis methods — including Minimum Connected Component (MCC), Shortest Path Networks, and transfer entropy-based directed connectivity — by integrating modern Graph Neural Networks, public benchmark datasets, and interactive visualization.
