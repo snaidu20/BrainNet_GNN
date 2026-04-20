@@ -1,0 +1,6 @@
+{
+  "total_subjects": 36,
+  "total_epochs": 2025,
+  "baseline_epochs": 1499,
+  "task_epochs": 526
+}

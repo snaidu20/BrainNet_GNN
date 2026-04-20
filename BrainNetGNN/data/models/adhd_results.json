@@ -1,0 +1,60 @@
+{
+  "dataset": "adhd",
+  "n_train": 2194,
+  "n_test": 511,
+  "n_subjects": 121,
+  "models": {
+    "GCN": {
+      "accuracy": 0.5871,
+      "f1": 0.5738,
+      "precision": 0.5854,
+      "recall": 0.5871,
+      "auc": 0.5923
+    },
+    "GAT": {
+      "accuracy": 0.6145,
+      "f1": 0.6104,
+      "precision": 0.6128,
+      "recall": 0.6145,
+      "auc": 0.6181
+    },
+    "LogisticRegression": {
+      "accuracy": 0.4814,
+      "f1": 0.4821,
+      "auc": 0.4849
+    },
+    "RandomForest": {
+      "accuracy": 0.6086,
+      "f1": 0.6087,
+      "auc": 0.6472
+    }
+  },
+  "electrode_importance": {
+    "Fp1": 1.0,
+    "Fp2": 1.0,
+    "F3": 1.0,
+    "F4": 1.0,
+    "C3": 1.0,
+    "C4": 1.0,
+    "P3": 1.0,
+    "P4": 1.0,
+    "O1": 1.0,
+    "O2": 1.0,
+    "F7": 1.0,
+    "F8": 1.0,
+    "T3": 1.0,
+    "T4": 1.0,
+    "T5": 1.0,
+    "T6": 1.0,
+    "Fz": 1.0,
+    "Cz": 1.0,
+    "Pz": 1.0
+  },
+  "top_electrodes": [
+    "F7",
+    "F8",
+    "T5",
+    "P3",
+    "T3"
+  ]
+}
