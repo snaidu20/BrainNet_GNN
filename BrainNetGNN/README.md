@@ -12,6 +12,8 @@
 
 BrainNetGNN applies Graph Neural Networks (GCN, GAT) to functional brain networks constructed from multi-channel EEG recordings for **cognitive workload classification** and **ADHD detection**. The project includes an interactive dashboard for real-time brain network visualization and GNN-based prediction.
 
+> **Prototype Notice**: This is a research prototype and is not intended for clinical or production use. Current model performance is moderate and does not meet the reliability threshold required for real-world diagnostic applications. See [Limitations](#limitations--prototype-status) for details.
+
 This work extends established graph-theoretic brain network analysis methods — including Minimum Connected Component (MCC), Shortest Path Networks, and transfer entropy-based directed connectivity — by integrating modern Graph Neural Networks, public benchmark datasets, and interactive visualization.
 
 ---
@@ -99,6 +101,49 @@ Subject-wise train/test split (80/20) to prevent data leakage:
 | Logistic Regression | 0.481 | 0.482 | 0.485 |
 
 > **Note**: Results use strict subject-wise cross-validation. Literature figures (95%+) typically use within-subject or within-epoch splits. Our approach is more realistic for clinical deployment.
+
+---
+
+## Limitations & Prototype Status
+
+BrainNetGNN is a **research prototype**. The results, while produced under a rigorous evaluation setup, reveal several meaningful limitations that prevent this system from being used in any production or clinical context at this stage.
+
+### Performance Is Moderate at Best
+
+| Task | Best Accuracy | Best AUC | Assessment |
+|------|--------------|----------|------------|
+| Cognitive Workload (EEGMAT) | 0.736 (GCN) | 0.554 (GAT) | Moderate accuracy, near-chance AUC |
+| ADHD Detection | 0.615 (GAT) | 0.618 (GAT) | Marginally above random for binary classification |
+
+The AUC scores are particularly telling — an AUC of 0.55 on the workload task means the model has very limited discriminative ability beyond random guessing. The ADHD task at 61.5% accuracy and 0.618 AUC is better, but still well below what would be considered reliable for any screening application.
+
+### Class Imbalance Skews EEGMAT Results
+
+The EEGMAT dataset has a significant imbalance: 1,499 baseline epochs vs. 526 task epochs. The reported accuracy of 73.6% partly reflects the model exploiting this imbalance rather than learning robust task-specific patterns. Accuracy alone is a misleading metric here — the AUC of 0.55 is the more honest indicator.
+
+### Graph Construction Is Handcrafted, Not Learned
+
+The GNNs operate on graphs pre-built using fixed connectivity metrics (PLV, PLI, coherence, correlation) and threshold-based sparsification. These design choices directly shape what the model sees. Small changes in the graph construction step can significantly alter model performance, and the pipeline is not fully end-to-end.
+
+### No Temporal Dynamics
+
+EEG is inherently temporal and non-stationary. The current approach treats each 4-second epoch as a static graph, discarding how brain connectivity evolves across time. Dynamic or temporal graph models would better represent ongoing neural activity.
+
+### Attention Weights Are Not Neurologically Validated
+
+The GAT attention mechanism highlights electrode importance during classification, but these weights have not been validated against known neurophysiological patterns (e.g., frontal hypo-connectivity in ADHD, or parieto-occipital engagement in arithmetic). Attention should not be interpreted as ground-truth brain activity mapping without further validation.
+
+### No External Dataset Validation
+
+All results come from the same two public datasets used for training. Generalization to different acquisition setups, age groups, or EEG hardware has not been tested.
+
+### Not Suitable For
+
+- Clinical diagnosis or screening decisions
+- Real-time deployment without latency profiling and optimization
+- Any safety-critical or high-stakes application
+
+This project is best suited for academic research, portfolio demonstration, and as a starting point for more advanced graph-based neuro-AI work.
 
 ---
 
