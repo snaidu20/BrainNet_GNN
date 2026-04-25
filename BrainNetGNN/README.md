@@ -1,275 +1,109 @@
-# BrainNetGNN
-
-**Graph Neural Network Analysis of Brain Functional Connectivity from EEG**
+# BrainNetGNN: Graph Neural Networks for EEG-Based Brain Network Analysis
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![MNE](https://img.shields.io/badge/MNE--Python-1.12-green.svg)](https://mne.tools/)
+BrainNetGNN is an end-to-end research and applied-computing project for analyzing EEG-derived functional brain networks with graph neural networks. The pipeline converts multichannel EEG recordings into graph-structured representations, learns predictive patterns with graph models, and presents results through an interactive visualization dashboard. The current implementation targets two use cases: cognitive workload classification and ADHD-related EEG pattern analysis.
 
-### [View Live Dashboard Demo](https://snaidu20.github.io/BrainNet_GNN/)
+## Project Overview
 
-[![Dashboard Demo](docs/dashboard_v2.png)](https://snaidu20.github.io/BrainNet_GNN/)
+This project combines signal preprocessing, brain-network construction, graph feature engineering, graph neural network modeling, and visualization into a single workflow. EEG signals are segmented into epochs, transformed into functional connectivity graphs, enriched with spectral and graph-theoretic node features, and then passed to graph learning models such as GCN and GAT. Alongside these models, the project includes conventional baselines and a dashboard for interpretation and demonstration.
 
-BrainNetGNN applies Graph Neural Networks (GCN, GAT) to functional brain networks constructed from multi-channel EEG recordings for **cognitive workload classification** and **ADHD detection**. The project includes an interactive dashboard for real-time brain network visualization and GNN-based prediction.
+## What This Project Does
 
-This work extends established graph-theoretic brain network analysis methods — including Minimum Connected Component (MCC), Shortest Path Networks, and transfer entropy-based directed connectivity — by integrating modern Graph Neural Networks, public benchmark datasets, and interactive visualization.
+- Builds functional brain networks from 19-channel EEG recordings.
+- Preprocesses EEG signals and divides them into fixed analysis windows.
+- Computes connectivity matrices using PLV, PLI, coherence, and correlation.
+- Generates node features from multi-band spectral power and graph measures.
+- Trains graph neural networks, including GCN and GAT, for graph classification.
+- Compares graph models against standard machine-learning baselines.
+- Provides a dashboard for predictions, connectivity inspection, and electrode-level interpretation.
 
----
+## Key Discoveries
 
-## Key Features
+### 1. Functional connectivity can be turned into a learnable graph pipeline
+The project shows that EEG functional connectivity is not only useful for handcrafted graph analysis, but can also serve as a structured input for graph neural networks. Instead of stopping at manually designed network descriptors, the workflow enables the model to learn predictive patterns directly from graph topology and node features.
 
-- **EEG-to-Graph Pipeline**: Converts raw EEG to functional brain networks using PLV, PLI, coherence, and correlation connectivity metrics
-- **GNN Classification**: GCN and GAT models for cognitive state classification with attention-based electrode importance
-- **Graph Theory Metrics**: Clustering coefficient, average path length, small-worldness, global efficiency — following established brain network analysis methods
-- **Interactive Dashboard**: Real-time brain network visualization with Dash Cytoscape, prediction gauges, and ADHD vs. healthy comparison
-- **Dual-Task Design**: Cognitive workload detection (EEGMAT) and ADHD screening (Nasrabadi dataset)
+### 2. Multiple connectivity metrics offer complementary signal views
+By constructing graphs from PLV, PLI, coherence, and correlation, the project explores how different connectivity definitions capture different aspects of EEG relationships. This supports a broader experimental view of brain-network modeling rather than relying on a single connectivity assumption.
 
----
+### 3. Graph attention improves interpretability potential
+The use of GAT introduces a mechanism for estimating task-relevant node importance through attention weights. This creates a pathway for electrode-level interpretation and makes the system more useful for explainable AI discussions, demos, and decision-support interfaces.
 
-## Architecture
-
-```
-Raw EEG (19-channel, 10-20 system)
-    │
-    ├─ Preprocessing (MNE-Python)
-    │   ├─ Bandpass filter (1-45 Hz)
-    │   ├─ 50 Hz notch filter
-    │   ├─ Resampling to 128 Hz
-    │   └─ 4-second epoch segmentation
-    │
-    ├─ Graph Construction
-    │   ├─ Connectivity matrix (PLV / PLI / Coherence / Correlation)
-    │   ├─ Node features: 5 frequency band powers + 5 graph metrics
-    │   ├─ Edge sparsification (threshold-based)
-    │   └─ PyTorch Geometric Data objects
-    │
-    ├─ GNN Models
-    │   ├─ GCN (3-layer + global pool + MLP)
-    │   ├─ GAT (3-layer, 4 heads + attention extraction)
-    │   ├─ Logistic Regression baseline
-    │   └─ Random Forest baseline
-    │
-    └─ Interactive Dashboard (Plotly Dash)
-        ├─ Brain network graph (Cytoscape)
-        ├─ Real-time GNN prediction
-        ├─ Graph theory metrics gauges
-        ├─ Electrode importance heatmap
-        ├─ Connectivity comparison (class A vs. class B)
-        └─ Frequency band power chart
-```
-
----
-
-## Datasets
-
-| Dataset | Source | Subjects | Channels | Task | Sampling Rate | Access |
-|---------|--------|----------|----------|------|---------------|--------|
-| **EEGMAT** | [PhysioNet](https://physionet.org/content/eegmat/1.0.0/) | 36 | 19 EEG (10-20) | Mental arithmetic vs. rest | 500 Hz (↓128 Hz) | Open access |
-| **ADHD** | [IEEE DataPort / Kaggle](https://www.kaggle.com/datasets/danizo/eeg-dataset-for-adhd) | 121 (61 ADHD, 60 control) | 19 EEG (10-20) | Visual attention task | 128 Hz | Open access |
-
-### Preprocessing Statistics
-
-| Dataset | Epochs | Epoch Shape | Class Balance |
-|---------|--------|-------------|---------------|
-| EEGMAT | 2,025 | (19, 512) | 1,499 baseline / 526 task |
-| ADHD | 2,705 | (19, 512) | 1,246 control / 1,459 ADHD |
-
----
-
-## Results
-
-Subject-wise train/test split (80/20) to prevent data leakage:
-
-### Cognitive Workload (EEGMAT)
-
-| Model | Accuracy | F1 Score | AUC |
-|-------|----------|----------|-----|
-| **GAT** | 0.726 | **0.695** | **0.554** |
-| GCN | **0.736** | 0.694 | 0.550 |
-| Random Forest | 0.721 | 0.689 | 0.670 |
-| Logistic Regression | 0.632 | 0.658 | **0.729** |
-
-### ADHD Detection
-
-| Model | Accuracy | F1 Score | AUC |
-|-------|----------|----------|-----|
-| **GAT** | **0.615** | **0.610** | **0.618** |
-| GCN | 0.587 | 0.574 | 0.592 |
-| Random Forest | 0.609 | 0.609 | 0.647 |
-| Logistic Regression | 0.481 | 0.482 | 0.485 |
-
-> **Note**: Results use strict subject-wise cross-validation. Literature figures (95%+) typically use within-subject or within-epoch splits. Our approach is more realistic for clinical deployment.
-
----
-
-## Graph Theory Metrics
-
-Following established brain network analysis methodology, we compute the following graph-theoretic measures for each brain network:
-
-| Metric | Description | Reference |
-|--------|-------------|-----------|
-| **Clustering Coefficient** | Local connectivity density | Ramasamy et al. (2017), Neural Processing Letters |
-| **Average Path Length** | Global integration efficiency | Ramasamy et al. (2018), J. Integrative Neuroscience |
-| **Small-Worldness (σ)** | Balance of segregation and integration | Ramasamy et al. (2015), Neurocomputing |
-| **Global Efficiency** | Inverse of average shortest path | Latora & Marchiori (2001) |
-| **Betweenness Centrality** | Node importance in information flow | Freeman (1977) |
+### 4. Subject-wise evaluation makes results more realistic
+The project uses a strict subject-wise split, which is a stronger evaluation protocol than random sample-level splitting. This reduces leakage across train and test sets and gives a more honest estimate of how well the model may generalize to unseen individuals.
 
----
+### 5. The contribution is broader than a single model
+This work is not only a model experiment. It also demonstrates an integrated applied-computing system that includes data preprocessing, graph construction, learning, benchmarking, and user-facing visualization.
 
-## Project Structure
+## Current Results
 
-```
-BrainNetGNN/
-├── src/
-│   ├── preprocessing/
-│   │   └── eeg_preprocessor.py      # EEG filtering, epoching (MNE-Python)
-│   ├── graph_construction/
-│   │   └── brain_graph_builder.py    # PLV/PLI/coherence → PyG graphs
-│   ├── gnn_model/
-│   │   └── train.py                  # GCN, GAT, baselines + attention extraction
-│   └── dashboard/
-│       └── app.py                    # Interactive Plotly Dash dashboard
-├── data/
-│   ├── raw/                          # Original EEG files
-│   │   ├── eegmat/                   # PhysioNet EEGMAT (72 EDF files)
-│   │   └── adhd/                     # Nasrabadi ADHD dataset (CSV)
-│   ├── processed/                    # Preprocessed epochs + PyG graphs
-│   └── models/                       # Trained model weights + results
-├── docs/
-│   └── dashboard_v2.png              # Dashboard screenshot
-├── brainnet_study/                   # Research notes
-│   ├── ramasamy_papers_analysis.md   # 16-paper deep analysis
-│   ├── datasets_and_tools.md         # 15 datasets cataloged
-│   └── use_cases_and_architecture.md # GNN architecture review
-├── requirements.txt
-└── README.md
-```
+The current implementation reports moderate but meaningful performance under realistic subject-wise evaluation:
 
----
+- EEGMAT workload classification: strongest reported result around 0.736 accuracy with GCN.
+- ADHD task: strongest reported result around 0.615 accuracy with GAT.
 
-## Installation
+These numbers suggest that the problem is genuinely challenging and that the evaluation is not inflated by easy leakage. At the same time, they indicate that the system is still in a research-prototype stage rather than a high-confidence production or clinical solution.
 
-```bash
-# Clone the repository
-git clone https://github.com/snaidu20/BrainNetGNN.git
-cd BrainNetGNN
+## Why This Matters
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
+This project matters because it demonstrates a usable bridge between neuroscience-inspired graph construction and modern graph learning. It shows how EEG-based brain networks can support:
 
-# Install dependencies
-pip install -r requirements.txt
-```
+- cognitive state monitoring,
+- neurodevelopmental-condition screening research,
+- interpretable graph-based modeling,
+- dashboard-driven decision support,
+- future real-time operator or learner monitoring systems.
 
----
+The strongest practical value today is in research workflows, academic demonstrations, and human-in-the-loop decision-support settings.
 
-## Usage
+## Limitations
 
-### 1. Download Datasets
+### 1. Predictive performance is still moderate
+Although the evaluation setup is realistic, the current accuracy levels are not yet strong enough for high-stakes autonomous use. In particular, clinical or screening scenarios would require much stronger reliability, calibration, and external validation.
 
-**EEGMAT** (auto-downloads from PhysioNet):
-```bash
-cd data/raw/eegmat
-wget -r -N -c -np https://physionet.org/files/eegmat/1.0.0/
-```
+### 2. The pipeline is not fully end-to-end
+The graph neural networks operate on graphs that are already constructed through handcrafted preprocessing and connectivity estimation. This means the system still depends heavily on front-end design choices such as windowing, filtering, and graph-construction method.
 
-**ADHD** (from Kaggle):
-```bash
-# Download from https://www.kaggle.com/datasets/danizo/eeg-dataset-for-adhd
-# Place adhdata.csv in data/raw/adhd/
-```
+### 3. Real-time deployment would need optimization
+The present workflow includes multiple computational stages before inference, including preprocessing, feature extraction, and graph construction. For true real-time use, latency and throughput would need to be measured and optimized carefully.
 
-### 2. Preprocess EEG Data
+### 4. Generalization needs broader validation
+The project uses public datasets, which is valuable for reproducibility, but stronger claims would require testing across additional cohorts, acquisition conditions, and external datasets.
 
-```bash
-python src/preprocessing/eeg_preprocessor.py
-```
+### 5. Interpretability needs deeper validation
+Attention weights are useful for suggesting node importance, but they should not automatically be treated as ground-truth neurophysiological explanations. Stronger interpretability claims would require systematic validation against domain knowledge or complementary explainability methods.
 
-### 3. Build Brain Graphs
+## Real-World Impact Potential
 
-```bash
-python src/graph_construction/brain_graph_builder.py
-```
+The project has promising real-world potential in lower-risk and assistive environments such as:
 
-### 4. Train Models
+- workload estimation during complex tasks,
+- attention and engagement monitoring,
+- educational analytics,
+- research decision-support dashboards,
+- prototype neuro-AI interfaces.
 
-```bash
-python src/gnn_model/train.py
-```
+For medical or clinical deployment, the current system should be viewed as an early-stage research platform rather than a deployment-ready diagnostic tool.
 
-### 5. Launch Dashboard
+## What Makes This Project Valuable
 
-```bash
-python src/dashboard/app.py
-# Open http://localhost:8050
-```
+The main value of BrainNetGNN lies in the combination of three strengths:
 
----
+1. **Technical depth**: EEG preprocessing, graph construction, feature engineering, and GNN modeling.
+2. **Research relevance**: brain-network learning with interpretable graph-based analysis.
+3. **Applied-computing orientation**: dashboard integration, baseline comparison, and translational usability.
 
-## Methodology — Extending Brain Network Analysis with GNNs
+This makes the project suitable for research portfolios, graduate applications, and future extension into more advanced graph-learning studies.
 
-### Prior Work in Graph-Theoretic Brain Network Analysis
+## Recommended Next Steps
 
-Established methods for functional brain network (FBN) analysis have contributed foundational techniques:
+To strengthen the project further, the next improvements should include:
 
-- **MCC Algorithm** (Neurocomputing 2015) — Parameter-free spanning subgraph for FBN binarization
-- **Transfer Entropy Directed FBNs** (Neural Processing Letters 2017) — Directed connectivity via normalized transfer entropy
-- **Shortest Path Networks** (J. Integrative Neuroscience 2018) — Weighted network construction using path traversal frequency
-- **PageRank Electrode Ranking** (Springer 2021) — Weighted PageRank for electrode importance scoring
-
-### What BrainNetGNN Adds
-
-| Gap in Prior Work | BrainNetGNN Solution |
-|---------------------|---------------------|
-| Small private datasets (9-16 subjects) | Public datasets: 36 (EEGMAT) + 121 (ADHD) subjects |
-| Single paradigm (driving) | Multiple tasks: arithmetic, visual attention |
-| No public benchmarks | PhysioNet + IEEE DataPort datasets |
-| No real-time processing | Interactive dashboard with live graph updates |
-| No clinical populations | ADHD children dataset (61 ADHD + 60 control) |
-| No deep learning | GCN + GAT with attention-based explainability |
-| No open-source code | Full pipeline: preprocessing → GNN → dashboard |
-
-### Key Innovation
-
-The GAT attention mechanism provides a modern, learnable alternative to traditional PageRank-based electrode ranking — both identify which brain regions contribute most to classification, but GAT attention is task-adaptive and end-to-end differentiable.
-
----
-
-## Real-World Applications
-
-1. **Driver Fatigue Monitoring** — Detect cognitive overload before accidents by classifying brain network topology in real-time
-2. **ADHD Screening** — Identify abnormal brain connectivity patterns (frontal hypo-connectivity) as an objective diagnostic aid
-3. **Student Engagement Tracking** — Monitor cognitive load during online learning to improve educational outcomes
-4. **Clinical Brain Network Biomarkers** — Quantitative graph-theoretic metrics as potential biomarkers for neurological conditions
-
----
-
-## References
-
-### Brain Network Analysis Foundations
-- Ramasamy, V. et al. (2015). "Minimum Connected Component — A Novel Approach to Detection of Cognitive Load Induced Changes in Functional Brain Networks." *Neurocomputing*, 170, 15-31.
-- Ramasamy, V. et al. (2017). "Directed Connectivity Analysis of Functional Brain Networks during Cognitive Activity Using Transfer Entropy." *Neural Processing Letters*, 45(3), 807-824.
-- Ramasamy, V. et al. (2018). "Shortest Path Based Network Analysis to Characterize Cognitive Load States." *J. Integrative Neuroscience*, 17(2), 213-230.
-
-### GNN on EEG — State of the Art
-- Li et al. (2025). "ADHD detection from EEG signals using GCN based on multi-domain features." *Frontiers in Neuroscience*. (97.29%)
-- Pandey et al. (2025). "WL-GraphTrax: A Graph-Transformer Framework for EEG-Based Cognitive Workload Classification." *IEEE Access*. (95.68%)
-- Chiarion et al. (2023). "Connectivity Analysis in EEG Data: A Tutorial Review." *Bioengineering*.
-
-### Datasets
-- Zyma, I. et al. (2019). "Electroencephalograms during Mental Arithmetic Task Performance." *PhysioNet*. https://physionet.org/content/eegmat/1.0.0/
-- Nasrabadi et al. (2020). "EEG data for ADHD / Control children." *IEEE DataPort*.
-
----
-
-## Author
-
-**Sai Kumar Naidu** — MS in Computer Science, Florida Atlantic University  
-GitHub: [snaidu20](https://github.com/snaidu20)
-
----
-
-## License
-
-This project is for academic and research purposes. Datasets are used under their respective licenses (PhysioNet: ODC-BY; ADHD: IEEE DataPort open access).
+- dynamic or temporal graph modeling across EEG windows,
+- stronger external validation across datasets,
+- uncertainty estimation and calibration analysis,
+- latency benchmarking for real-time claims,
+- deeper comparison across connectivity-construction strategies,
+- improved explainability beyond attention alone.
+
+## Repository Positioning
+
+BrainNetGNN should be presented as a graph-learning research prototype for EEG-based functional brain-network analysis. It is best positioned as an interpretable and extensible system for benchmarking, visualization, and applied neuro-AI exploration rather than as a finalized diagnostic product.
